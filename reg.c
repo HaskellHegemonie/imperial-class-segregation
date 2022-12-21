@@ -1,99 +1,93 @@
+#include "lib/util.h"
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
-#define ARRLEN(x) sizeof(x) / sizeof(*x)
-#define handle_error(x)                                                        \
-  {                                                                            \
-    perror(x);                                                                 \
-    exit(EXIT_FAILURE);                                                        \
-  }
+const char *start_class_re = "<tr class='list (even|odd)'><td class=\"list "
+                             "inline_header\" colspan=\"5\" >";
+const char table[] = "</table>";
+const char refresh_str[] = "<meta http-equiv=\"refresh\"";
 
-typedef unsigned long lu;
-typedef long long ll;
-typedef long l;
-
-void read_stream(char *restrict *buff, lu *capacity, FILE *stream) {
-  lu used = 0;
-  char c = 0;
-  if (!*capacity) {
-    *capacity = 1;
-    *buff = malloc(*capacity * sizeof(**buff));
-  }
-  while ((c = fgetc(stream)) && c != EOF) {
-    if (c == '\n')
-      continue;
-    (*buff)[used++] = c;
-    if (used >= *capacity) {
-      *capacity *= 2;
-      *buff = realloc(*buff, *capacity * sizeof(**buff));
-    }
-  }
-  (*buff)[used] = 0;
-  return;
-}
-const char *begin_class_str = "[0-9]{1,2}[a-f][^>]*";
-const char *end_class_str = "<tr class='list (even|odd)'><td class=\"list "
-                            "inline_header\" colspan=\"5\" >";
-const char *class_header = "<tr class='list even'><td class=\"list "
-                           "inline_header\" colspan=\"5\" >";
 int main(int argc, char *argv[]) {
-  char *stream_str, *class_str, *fwd_str = NULL;
-  char classname[8] = "000.htm";
-  lu capacity = 0;
-  FILE *arg_file, *create_file = NULL;
-
-  regex_t begin_class_re, end_class_re = {0};
+  char *stream_str = NULL, *class_str = NULL, *fwd_str = NULL;
+  char classname[] = "000.htm";
+  cap_len cl = {0};
+  FILE *arg_file = NULL, *create_file = NULL;
+  regex_t begin_class_re;
   regmatch_t groups[1];
-  regoff_t html_head, start, end, end_class, off = {0};
-  if (regcomp(&begin_class_re, begin_class_str, REG_EXTENDED | REG_NEWLINE))
+  regoff_t html_head, start, end, start_new_class, off = {0};
+  char *dirname = NULL;
+  lu dir_n = 0;
+  struct stat directory;
+  if (regcomp(&begin_class_re, start_class_re, REG_EXTENDED))
     handle_error("Compiling begin_class_re");
-  if (regcomp(&end_class_re, end_class_str, REG_EXTENDED | REG_NEWLINE))
-    handle_error("Compiling end_class_re");
-
+  if (argc < 1) {
+    printf("USAGE: ./reg.out [FILENAME] [DIRNAME(default=.)]");
+  }
+  if (argc > 2) {
+    dir_n = strlen(argv[--argc]);
+    dirname = malloc(dir_n + ARRLEN(classname) + 3);
+    dirname[0] = '.';
+    dirname[1] = '/';
+    strncpy(dirname + 2, argv[argc], dir_n);
+    dirname[dir_n + 2] = '/';
+    if (stat(argv[argc], &directory) == -1) {
+      mkdir(argv[argc], 0755);
+    }
+  } else {
+    dirname = malloc(ARRLEN(classname));
+  }
   for (lu i = 1; i < argc; i += 1) {
-    arg_file = fopen(argv[i], "r");
-    read_stream(&stream_str, &capacity, arg_file);
-    if (regexec(&end_class_re, stream_str, ARRLEN(groups), groups, 0))
+    if (!(arg_file = fopen(argv[i], "r")))
+      handle_error("Couldn't open file");
+    read_stream(&stream_str, &cl, arg_file);
+    if (regexec(&begin_class_re, stream_str, ARRLEN(groups), groups, 0))
       handle_error("No valid html header");
+    // little hack to get rid of refreshing
+    ll refresh =
+        find(stream_str, refresh_str, cl.length, ARRLEN(refresh_str) - 1);
+    // 0x7A = 'z'
+    for (lu i = 18; i < 25; i += 1)
+      stream_str[refresh + i] = 0x7A;
     html_head = groups->rm_so;
-    class_str = stream_str + groups->rm_eo;
-    for (lu i = 0; i < html_head; i += 1) {
-      printf("%c", stream_str[i]);
-    }
-    printf("\n");
+    class_str = stream_str + html_head;
     fwd_str = class_str;
-    for (lu i = 0; i < html_head; i += 1) {
-      fwrite(stream_str + i, sizeof(char), 1, create_file);
-    }
 
     while (!regexec(&begin_class_re, fwd_str, ARRLEN(groups), groups, 0)) {
-      create_file = fopen(classname, "w");
-      for (lu i = 0; i < html_head; i += 1) {
-        fwrite(stream_str + i, sizeof(char), 1, create_file);
-      }
       off = fwd_str - class_str;
       start = groups->rm_so + off;
       end = groups->rm_eo + off;
-      fwd_str = class_str + end;
-      classname[0] += 1;
-      fwrite(class_header, sizeof(*class_header), strlen(class_header),
-             create_file);
-      if (regexec(&end_class_re, fwd_str, ARRLEN(groups), groups, 0))
-        handle_error("executing regex");
-      off = fwd_str - class_str;
-      end_class = groups->rm_so + off;
-      end = groups->rm_eo + off;
-      printf("Begin Match:\n");
-      for (lu i = start; i < end_class; i += 1) {
-        fwrite(class_str + i, sizeof(char), 1, stdout);
-        fwrite(class_str + i, sizeof(char), 1, create_file);
+      for (lu i = 0; i < 4; i += 1) {
+        if (class_str[end + i] == 0x20 || i == 3) {
+          strncpy(dirname + i + dir_n + 3, ".htm", 5);
+          break;
+        }
+        dirname[i + dir_n + 3] = class_str[end + i];
       }
-      printf("End Match\n");
+      printf("%s\n", dirname);
+      if (!(create_file = fopen(dirname, "w")))
+        handle_error("Couldn't create file");
+      fwrite(stream_str, sizeof(char), html_head, create_file);
+
+      // skip to the end so start..(start of next match) will include the class
       fwd_str = class_str + end;
+      if (regexec(&begin_class_re, fwd_str, ARRLEN(groups), groups, 0))
+        break;
+      off = fwd_str - class_str;
+      start_new_class = groups->rm_so + off;
+      fwrite(class_str + start, sizeof(char), start_new_class - start,
+             create_file);
+      fwd_str = class_str + start_new_class;
     }
-    // fclose(create_file);
+    ll end_in = find(class_str + start, table, cl.length + html_head + start,
+                     ARRLEN(table) - 1);
+    fwrite(class_str + start, sizeof(char), end_in, create_file);
+    if (create_file)
+      fclose(create_file);
   }
+  free(dirname);
   free(stream_str);
+  regfree(&begin_class_re);
 }
