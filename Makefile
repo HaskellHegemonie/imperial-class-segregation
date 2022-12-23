@@ -1,3 +1,4 @@
+CFLAGS=-Wall
 CDIR=.
 LIBDIR=./lib
 

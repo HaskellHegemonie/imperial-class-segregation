@@ -25,12 +25,10 @@ void read_stream(char **buff, cap_len *cap_len, FILE *stream) {
 }
 void lps(const char *needle, int *arr, lu needle_n) {
   ll i = 0, j = 1;
-  printf("%lld\n", j);
   arr[0] = 0;
   while (j < needle_n) {
     if (needle[i] == needle[j]) {
       i += 1;
-      printf("%lld\n", j);
       arr[j] = i;
 
       // arr[j] = arr[j - 1] + 1;
