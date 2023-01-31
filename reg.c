@@ -32,11 +32,11 @@ int main(int argc, char *argv[]) {
   if (argc > 2) {
     dir_n = strlen(argv[--argc]);
     dirname = malloc(dir_n + ARRLEN(classname) + 3);
-    path_sep_used = 3;
-    dirname[0] = '.';
-    dirname[1] = '/';
-    strncpy(dirname + 2, argv[argc], dir_n);
-    dirname[dir_n + 2] = '/';
+    path_sep_used = 1;
+    strncpy(dirname, argv[argc], dir_n);
+		printf("dirname: %s\n", dirname);
+    dirname[dir_n] = '/';
+		printf("dirname: %s\n", dirname);
     if (stat(argv[argc], &directory) == -1) {
       mkdir(argv[argc], 0755);
     }
