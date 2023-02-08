@@ -1,4 +1,5 @@
-CFLAGS=-Wall -g
+#CFLAGS=-Wall -g 
+CC=gcc
 CDIR=.
 LIBDIR=./lib
 

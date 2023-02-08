@@ -3,8 +3,12 @@
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
 
 const char *start_class_re = "<tr class='list (even|odd)'><td class=\"list "
                              "inline_header\" colspan=\"5\" >";
@@ -24,6 +28,7 @@ int main(int argc, char *argv[]) {
   cap_len find_cl = {0};
   lu dir_n = 0;
   lu path_sep_used = 0;
+	int32_t dirfd = AT_FDCWD;
   struct stat directory;
   if (regcomp(&begin_class_re, start_class_re, REG_EXTENDED))
     handle_error("Compiling begin_class_re");
@@ -31,6 +36,17 @@ int main(int argc, char *argv[]) {
     printf("USAGE: ./reg.out [FILENAME] [CLASSFILE] [DIRNAME(default=.)]");
   }
   if (argc > 3) {
+		char *path = argv[3];
+		if ((dirfd = openat(AT_FDCWD, path, O_DIRECTORY | O_RDONLY)) == -1){
+			mkdirat(AT_FDCWD, path, 0755);
+			if ((dirfd = openat(AT_FDCWD, path, O_DIRECTORY | O_RDONLY)) == -1){
+				perror("Error finding directory");
+			}
+		}
+		int32_t l = 0;
+		if((l = openat(dirfd, "he", O_RDONLY | O_CREAT, 0644)) == -1){
+			return 1;
+		}
     dir_n = strlen(argv[--argc]);
     dirname = malloc(dir_n + ARRLEN(classname) + 3);
     path_sep_used = 1;
@@ -65,7 +81,7 @@ int main(int argc, char *argv[]) {
     html_head = groups->rm_so;
     class_str = stream_str + html_head;
 
-		process(argv[argc - 1], stream_str, html_head, ".htm", 5);
+		process(dirfd, argv[argc - 1], stream_str, html_head, ".htm", 5);
 
     fwd_str = class_str;
 

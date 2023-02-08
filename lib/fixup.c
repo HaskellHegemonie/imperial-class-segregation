@@ -3,6 +3,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 uint8_t is_num(char c){
 	return c >= 0x30 && c <= 0x39;
 }
@@ -23,8 +26,10 @@ uint8_t get_line(char **dest, uint64_t *char_len, FILE *file){
 	(*dest)[i] = 0;
 	return i != 0;
 }
-void process(char *path, char *content, uint64_t content_len, char *ext, uint64_t ext_len){
-	FILE *file = fopen(path, "r");
+void process(int32_t dirfd, char *path, char *content, uint64_t content_len, char *ext, uint64_t ext_len){
+	int32_t filefd = openat(AT_FDCWD, path, O_RDONLY);
+	int32_t creatfd;
+	FILE *file = fdopen(filefd, "r");
 	if (!file){
 		perror("Couldn't find file");
 		return;
@@ -44,9 +49,12 @@ void process(char *path, char *content, uint64_t content_len, char *ext, uint64_
 				strncpy(filename, line, end_num);
 				*(filename + end_num) = line[i];
 				strncpy(filename + end_num + 1, ext, ext_len);
-				FILE *creat = fopen(filename, "w");
-				fwrite(content, sizeof(char), content_len - 1, creat);
-				fclose(creat);
+				printf("dirname: |%s|\n", filename);
+				if ((creatfd = openat(dirfd, filename, O_RDWR | O_CREAT, 0644)) == -1){
+					perror("aoeu");
+				}
+				write(creatfd, content, content_len - 1);
+				close(creatfd);
 			}
 
 		}
@@ -55,10 +63,12 @@ void process(char *path, char *content, uint64_t content_len, char *ext, uint64_
 			for(end_num = 1; is_num(line[end_num]); end_num += 1);
 			strncpy(filename + 1, line + 1, end_num);
 			strncpy(filename + end_num, ext, ext_len);
-			printf("%s\n", filename);
-			FILE *creat = fopen(filename, "w");
-			fwrite(content, sizeof(char), content_len - 1, creat);
-			fclose(creat);
+			printf("dirname: |%s|\n", filename);
+			if ((creatfd = openat(dirfd, filename, O_RDWR | O_CREAT, 0644)) == -1){
+				perror("aoeu");
+			}
+			write(creatfd, content, content_len - 1);
+			close(creatfd);
 		}
 	}
 	fclose(file);
