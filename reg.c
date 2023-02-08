@@ -1,4 +1,5 @@
 #include "lib/util.h"
+#include "lib/fixup.h"
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,10 +27,10 @@ int main(int argc, char *argv[]) {
   struct stat directory;
   if (regcomp(&begin_class_re, start_class_re, REG_EXTENDED))
     handle_error("Compiling begin_class_re");
-  if (argc < 1) {
-    printf("USAGE: ./reg.out [FILENAME] [DIRNAME(default=.)]");
+  if (argc < 2) {
+    printf("USAGE: ./reg.out [FILENAME] [CLASSFILE] [DIRNAME(default=.)]");
   }
-  if (argc > 2) {
+  if (argc > 3) {
     dir_n = strlen(argv[--argc]);
     dirname = malloc(dir_n + ARRLEN(classname) + 3);
     path_sep_used = 1;
@@ -43,7 +44,7 @@ int main(int argc, char *argv[]) {
   } else {
     dirname = malloc(ARRLEN(classname));
   }
-  for (lu i = 1; i < argc; i += 1) {
+  for (lu i = 1; i < argc - 1; i += 1) {
     if (!(arg_file = fopen(argv[i], "r")))
       handle_error("Couldn't open file");
     read_stream(&stream_str, &cl, arg_file);
@@ -63,6 +64,9 @@ int main(int argc, char *argv[]) {
       stream_str[refresh + i] = 0x7A;
     html_head = groups->rm_so;
     class_str = stream_str + html_head;
+
+		process(argv[argc - 1], stream_str, html_head, ".htm", 5);
+
     fwd_str = class_str;
 
     while (!regexec(&begin_class_re, fwd_str, ARRLEN(groups), groups, 0)) {

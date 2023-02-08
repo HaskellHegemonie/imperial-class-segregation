@@ -1,7 +1,8 @@
-*
-!./lib/util.c
-!./lib/util.h
+/*
+/lib/*.o
+!/lib/
 !.gitignore
 !README.md
+!class
 !reg.c
 !Makefile
