@@ -50,7 +50,7 @@ void process(int32_t dirfd, char *path, char *content, uint64_t content_len, cha
 				*(filename + end_num) = line[i];
 				strncpy(filename + end_num + 1, ext, ext_len);
 				printf("dirname: |%s|\n", filename);
-				if ((creatfd = openat(dirfd, filename, O_RDWR | O_CREAT, 0644)) == -1){
+				if ((creatfd = openat(dirfd, filename, O_RDWR | O_TRUNC | O_CREAT, 0644)) == -1){
 					perror("aoeu");
 				}
 				write(creatfd, content, content_len - 1);
@@ -64,9 +64,10 @@ void process(int32_t dirfd, char *path, char *content, uint64_t content_len, cha
 			strncpy(filename + 1, line + 1, end_num);
 			strncpy(filename + end_num, ext, ext_len);
 			printf("dirname: |%s|\n", filename);
-			if ((creatfd = openat(dirfd, filename, O_RDWR | O_CREAT, 0644)) == -1){
+			if ((creatfd = openat(dirfd, filename, O_RDWR | O_TRUNC | O_CREAT, 0644)) == -1){
 				perror("aoeu");
 			}
+			printf("filename: %s\n", filename);
 			write(creatfd, content, content_len - 1);
 			close(creatfd);
 		}
