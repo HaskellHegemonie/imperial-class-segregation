@@ -1,4 +1,4 @@
-### ccp-vaccum
+### imperial-class-segregation
 ### Class segregation written in C, but fast as fuck
 ### just make your day using (gnu) make(1)
 
